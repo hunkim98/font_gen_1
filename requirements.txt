@@ -1,4 +1,5 @@
 fastapi 
 uvicorn
 numpy
-scikit-image
+# vtracer
+# pillow
