@@ -55,10 +55,10 @@ async def read_root(body: PostStrokeBody):
     gen_result = np.transpose(gen_result, (0, 2, 3, 1))
     environment = os.getenv("SERVER_ENVIRONMENT", "production")
 
-    save_dir = "./samples/"
+    save_dir = "/tmp/"
 
-    if environment == "production":
-        save_dir = "/tmp/"
+    if environment == "development":
+        save_dir = "./samples/"
 
     gen_random_ids = []
     svg_results = []
