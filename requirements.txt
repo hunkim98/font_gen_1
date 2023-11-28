@@ -3,3 +3,5 @@ uvicorn
 numpy
 vtracer
 pillow
+shortuuid
+python-dotenv

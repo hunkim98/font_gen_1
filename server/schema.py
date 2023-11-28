@@ -1,5 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel
+from typing import List
 
 
 class NoteSchema(BaseModel):
@@ -10,6 +11,10 @@ class NoteSchema(BaseModel):
         schema_extra = {
             "example": {
                 "title": "LogRocket.",
-                "content": "Logrocket is the most flexible publishing company for technical authors. From editors to payment, the process is too flexible and that's what makes it great."
+                "content": "Logrocket is the most flexible publishing company for technical authors. From editors to payment, the process is too flexible and that's what makes it great.",
             }
         }
+
+
+class PostStrokeBody(BaseModel):
+    strokes: List[List[int]]

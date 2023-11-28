@@ -1,43 +1,92 @@
 from fastapi import FastAPI
 from server.routes import router as NoteRouter
-from .model.gan import Generator
+from server.schema import PostStrokeBody
+from server.utils.thinning import thinning
+from server.model.gan import Generator
 import numpy as np
+from PIL import Image
+from server.utils.data import normalize
+import shortuuid
+import os
+from dotenv import load_dotenv
+import vtracer
 
 app = FastAPI()
 
+load_dotenv()
 
-@app.get("/", tags=["Root"])
-async def read_root():
-    Generator.load_weights("server/model/pixel_gen_weights.npz")
-    batch_size = 3
-    z = np.random.randn(batch_size, 100, 1, 1).astype(np.float32)
-    x = Generator(z)
-    gen_result = ((x.data + 1) / 2) * 255
+
+@app.post("/", tags=["Root"])
+async def read_root(body: PostStrokeBody):
+    model = Generator()
+    img = np.zeros([256, 256, 3], dtype=np.uint8)
+    img.fill(255)  # numpy array!
+    im = Image.fromarray(img)  # convert numpy array to image
+    pixels = body.strokes
+
+    strokes = body.strokes
+    stroke_array = np.array(strokes)
+    # make 1bit to 8bit
+    stroke_array = stroke_array
+
+    model.load_weights(path="server/model/NanumPenScript_gen.npz")
+    # change 1 to True and 0 to False
+    stroke_array = stroke_array.astype(bool)
+    skeleton = thinning(stroke_array)
+
+    x = 0
+    y = 0
+    for row in skeleton:
+        y = 0
+        for pixel in row:
+            if pixel == 1:
+                im.putpixel((y, x), (0, 0, 0))
+            y += 1
+        x += 1
+
+    rgb = np.asarray(im.convert("RGB"))
+    array = rgb / 255.0
+    mean = np.array([0.5, 0.5, 0.5])
+    std = np.array([0.5, 0.5, 0.5])
+    normalized = normalize(array, mean, std)
+    transposed = np.transpose(normalized, (2, 0, 1))
+    generated = model(np.array([transposed]))
+    gen_result = ((generated.data + 1) / 2) * 255
     gen_result = np.transpose(gen_result, (0, 2, 3, 1))
-    # the result is 50 * 50
-    # original data was 500 * 500 with 25 pixel size
-    # if the result is 50 * 50, then the pixel size is 2.5
+    first = gen_result[0]
+    sample_image = Image.fromarray(first.astype(np.uint8))
+    sample_image.show()
+    # save temporarily
+    random_id = shortuuid.uuid()
+    environment = os.getenv("SERVER_ENVIRONMENT", "production")
+    dir = "sample.png"
+    svg_dir = "sample.svg"
+    if environment == "production":
+        dir = f"/tmp/{random_id}.png"
+        svg_dir = f"/tmp/{random_id}.svg"
+    sample_image.save(dir)
 
-    results = []
+    vtracer.convert_image_to_svg_py(
+        dir,
+        svg_dir,
+        colormode="binary",  # ["color"] or "binary"
+        hierarchical="stacked",  # ["stacked"] or "cutout"
+        mode="spline",  # ["spline"] "polygon", or "none"
+        filter_speckle=50,  # default: 4
+        color_precision=10,  # default: 6
+        layer_difference=16,  # default: 16
+        corner_threshold=60,  # default: 60
+        length_threshold=4,  # in [3.5, 10] default: 4.0
+        max_iterations=10,  # default: 10
+        splice_threshold=80,  # default: 45
+        path_precision=2,  # default: 8
+    )
 
-    # TODO: implement for loop
-    for gen_i in range(len(gen_result)):
-        test = []
-        for i in range(25):
-            row = []
-            for j in range(25):
-                # average r, g, b separate,y
-                r = np.mean(gen_result[gen_i]
-                            [i * 2:i * 2 + 2, j * 2:j * 2 + 2, 0])
-                g = np.mean(gen_result[gen_i]
-                            [i * 2:i * 2 + 2, j * 2:j * 2 + 2, 1])
-                b = np.mean(gen_result[gen_i]
-                            [i * 2:i * 2 + 2, j * 2:j * 2 + 2, 2])
-                row.append([r, g, b])
-            test.append(row)
-        results.append(test)
-    return {
-        "result": gen_result.tolist(),
-    }
+    # read svg and return svg
+    with open(svg_dir, "r") as f:
+        svg = f.read()
+
+    return {"result": svg}
+
 
 app.include_router(NoteRouter, prefix="/note")
