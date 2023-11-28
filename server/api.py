@@ -55,6 +55,8 @@ async def read_root(body: PostStrokeBody):
     gen_result = np.transpose(gen_result, (0, 2, 3, 1))
     environment = os.getenv("SERVER_ENVIRONMENT", "production")
 
+    print(environment, " this is envirnoment")
+
     save_dir = "/tmp/"
 
     if environment == "development":
