@@ -10,6 +10,7 @@ import shortuuid
 import os
 from dotenv import load_dotenv
 import vtracer
+import base64
 
 app = FastAPI()
 
@@ -55,8 +56,6 @@ async def read_root(body: PostStrokeBody):
     gen_result = np.transpose(gen_result, (0, 2, 3, 1))
     environment = os.getenv("SERVER_ENVIRONMENT", "production")
 
-    print(environment, " this is envirnoment")
-
     save_dir = "/tmp/"
 
     if environment == "development":
@@ -64,6 +63,7 @@ async def read_root(body: PostStrokeBody):
 
     gen_random_ids = []
     svg_results = []
+    image_results = []
     for results in gen_result:
         sample_image = Image.fromarray(results.astype(np.uint8))
         # save temporarily
@@ -92,7 +92,12 @@ async def read_root(body: PostStrokeBody):
             gen_random_ids.append(random_id)
             svg_results.append(svg)
 
-    return {"result": svg_results}
+        with open(file_dir, "rb") as f:
+            binary = f.read()
+            encoded_image = base64.b64encode(binary).decode("utf-8")
+            image_results.append(encoded_image)
+
+    return {"result": svg_results, "images": image_results}
 
 
 app.include_router(NoteRouter, prefix="/note")
