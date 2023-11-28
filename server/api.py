@@ -53,34 +53,46 @@ async def read_root(body: PostStrokeBody):
     generated = model(np.array([transposed]))
     gen_result = ((generated.data + 1) / 2) * 255
     gen_result = np.transpose(gen_result, (0, 2, 3, 1))
-    first = gen_result[0]
-    sample_image = Image.fromarray(first.astype(np.uint8))
-    sample_image.show()
-    # save temporarily
-    random_id = shortuuid.uuid()
     environment = os.getenv("SERVER_ENVIRONMENT", "production")
+
+    save_dir = "./samples/"
+
+    if environment == "production":
+        save_dir = "/tmp/"
+
+    gen_random_ids = []
+
+    for results in gen_result:
+        sample_image = Image.fromarray(results.astype(np.uint8))
+        # save temporarily
+        random_id = shortuuid.uuid()
+        file_dir = f"{save_dir}{random_id}.png"
+        sample_image.save(file_dir)
+        svg_dir = f"{save_dir}{random_id}.svg"
+
+        vtracer.convert_image_to_svg_py(
+            file_dir,
+            svg_dir,
+            colormode="binary",  # ["color"] or "binary"
+            hierarchical="stacked",  # ["stacked"] or "cutout"
+            mode="spline",  # ["spline"] "polygon", or "none"
+            filter_speckle=50,  # default: 4
+            color_precision=10,  # default: 6
+            layer_difference=16,  # default: 16
+            corner_threshold=60,  # default: 60
+            length_threshold=4,  # in [3.5, 10] default: 4.0
+            max_iterations=10,  # default: 10
+            splice_threshold=80,  # default: 45
+            path_precision=2,  # default: 8
+        )
+
+    random_id = shortuuid.uuid()
     dir = "sample.png"
     svg_dir = "sample.svg"
     if environment == "production":
         dir = f"/tmp/{random_id}.png"
         svg_dir = f"/tmp/{random_id}.svg"
     sample_image.save(dir)
-
-    vtracer.convert_image_to_svg_py(
-        dir,
-        svg_dir,
-        colormode="binary",  # ["color"] or "binary"
-        hierarchical="stacked",  # ["stacked"] or "cutout"
-        mode="spline",  # ["spline"] "polygon", or "none"
-        filter_speckle=50,  # default: 4
-        color_precision=10,  # default: 6
-        layer_difference=16,  # default: 16
-        corner_threshold=60,  # default: 60
-        length_threshold=4,  # in [3.5, 10] default: 4.0
-        max_iterations=10,  # default: 10
-        splice_threshold=80,  # default: 45
-        path_precision=2,  # default: 8
-    )
 
     # read svg and return svg
     with open(svg_dir, "r") as f:
