@@ -61,7 +61,7 @@ async def read_root(body: PostStrokeBody):
         save_dir = "/tmp/"
 
     gen_random_ids = []
-
+    svg_results = []
     for results in gen_result:
         sample_image = Image.fromarray(results.astype(np.uint8))
         # save temporarily
@@ -85,20 +85,12 @@ async def read_root(body: PostStrokeBody):
             splice_threshold=80,  # default: 45
             path_precision=2,  # default: 8
         )
+        with open(svg_dir, "r") as f:
+            svg = f.read()
+            gen_random_ids.append(random_id)
+            svg_results.append(svg)
 
-    random_id = shortuuid.uuid()
-    dir = "sample.png"
-    svg_dir = "sample.svg"
-    if environment == "production":
-        dir = f"/tmp/{random_id}.png"
-        svg_dir = f"/tmp/{random_id}.svg"
-    sample_image.save(dir)
-
-    # read svg and return svg
-    with open(svg_dir, "r") as f:
-        svg = f.read()
-
-    return {"result": svg}
+    return {"result": svg_results}
 
 
 app.include_router(NoteRouter, prefix="/note")
