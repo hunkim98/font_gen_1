@@ -6,6 +6,7 @@ from server.model.gan import Generator
 import numpy as np
 from PIL import Image
 from server.utils.data import normalize
+from fastapi.middleware.cors import CORSMiddleware
 import shortuuid
 import os
 from dotenv import load_dotenv
@@ -15,6 +16,14 @@ import base64
 app = FastAPI()
 
 load_dotenv()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/", tags=["Root"])
